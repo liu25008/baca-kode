@@ -10,6 +10,7 @@ local lp = Players.LocalPlayer
 local FILE = "VD_Log_Live.txt"
 local MAX_LOGS = 6000
 local logs, running, t0, saved = {}, true, os.clock(), 0
+local closed = false
 
 local function log(kind, text)
 	if not running or #logs >= MAX_LOGS then return end
@@ -204,7 +205,7 @@ frame.Parent = gui
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 10)
 
 local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, -16, 0, 26)
+title.Size = UDim2.new(1, -76, 0, 26)
 title.Position = UDim2.fromOffset(8, 4)
 title.BackgroundTransparency = 1
 title.Font = Enum.Font.GothamMedium
@@ -259,24 +260,79 @@ btn("Clear", 8, 116, 194, function()
 	saved = 0
 	t0 = os.clock()
 end)
+-- Tombol header: sembunyi dan tutup
+local function hdrBtn(text, xOff, cb)
+	local b = Instance.new("TextButton")
+	b.Size = UDim2.fromOffset(26, 22)
+	b.Position = UDim2.new(1, xOff, 0, 6)
+	b.BackgroundColor3 = Color3.fromRGB(45, 45, 48)
+	b.BorderSizePixel = 0
+	b.Font = Enum.Font.GothamMedium
+	b.TextSize = 14
+	b.TextColor3 = Color3.fromRGB(220, 220, 220)
+	b.Text = text
+	b.AutoButtonColor = false
+	b.Parent = frame
+	Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6)
+	b.MouseEnter:Connect(function() b.BackgroundColor3 = Color3.fromRGB(68, 68, 72) end)
+	b.MouseLeave:Connect(function() b.BackgroundColor3 = Color3.fromRGB(45, 45, 48) end)
+	b.MouseButton1Click:Connect(cb)
+	return b
+end
 
-task.spawn(function()
-	while true do
-		task.wait(0.5)
-		if not gui.Parent then pcall(function() gui.Parent = parent end) end
-		title.Text = "VD Logger | " .. #logs .. " log"
+-- Pil kecil untuk memunculkan panel lagi
+local pill = Instance.new("TextButton")
+pill.Size = UDim2.fromOffset(44, 26)
+pill.Position = UDim2.new(0, 20, 0.5, -13)
+pill.BackgroundColor3 = Color3.fromRGB(22, 22, 24)
+pill.BorderSizePixel = 0
+pill.Font = Enum.Font.GothamMedium
+pill.TextSize = 12
+pill.TextColor3 = Color3.fromRGB(230, 230, 230)
+pill.Text = "VD"
+pill.AutoButtonColor = false
+pill.Visible = false
+pill.Active = true
+pill.Draggable = true
+pill.Parent = gui
+Instance.new("UICorner", pill).CornerRadius = UDim.new(0, 8)
+
+local function setHidden(h)
+	frame.Visible = not h
+	pill.Visible = h
+end
+
+hdrBtn("-", -62, function() setHidden(true) end)
+hdrBtn("X", -32, function()
+	closed = true
+	flush()
+	running = false
+	gui:Destroy()
+end)
+pill.MouseButton1Click:Connect(function() setHidden(false) end)
+
+UIS.InputBegan:Connect(function(i, gpe)
+	if not gpe and i.KeyCode == Enum.KeyCode.RightShift and not closed then
+		setHidden(frame.Visible)
 	end
 end)
-
+task.spawn(function()
+	while not closed do
+		task.wait(0.5)
+		if not closed then
+			if not gui.Parent then pcall(function() gui.Parent = parent end) end
+			title.Text = "VD Logger | " .. #logs .. " log"
+		end
+	end
+end)
 -- AUTOSAVE tiap 10 detik, memori dikosongkan kalau sudah 5000 (isi aman di file)
 task.spawn(function()
-	while true do
+	while not closed do
 		task.wait(10)
 		flush()
 		if appendfile and #logs >= 5000 then logs = {} saved = 0 end
 	end
 end)
-
 -- simpan terakhir saat teleport, lalu jalankan ulang di tempat baru
 lp.OnTeleport:Connect(flush)
 local qot = queue_on_teleport or (syn and syn.queue_on_teleport)
