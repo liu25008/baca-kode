@@ -12,8 +12,14 @@ local MAX_LOGS = 6000
 local logs, running, t0, saved = {}, true, os.clock(), 0
 local closed = false
 
+local SPAM = {"PushRemote", "UpdateCharacterLook", "GetPing", "CamLook"}
 local function log(kind, text)
 	if not running or #logs >= MAX_LOGS then return end
+	if kind == "ANIMSTOP" or kind == "MOVE" then return end
+	if kind == "KEYFRAME" and text:find("CFRAME;", 1, true) then return end
+	for _, s in ipairs(SPAM) do
+		if text:find(s, 1, true) then return end
+	end
 	logs[#logs + 1] = string.format("[%.2f][%s] %s", os.clock() - t0, kind, text)
 end
 
@@ -186,7 +192,18 @@ task.spawn(function()
 		if d:IsA("LocalScript") then log("GUISCRIPT", d:GetFullName()) end
 	end
 end)
-
+-- Event dari server ke client (skill check, hasil parry)
+local watchNames = {SkillCheckEvent = true, SkillCheckFailEvent = true, parryResult = true}
+for _, d in ipairs(RS:GetDescendants()) do
+	if d:IsA("RemoteEvent") and watchNames[d.Name] then
+		d.OnClientEvent:Connect(function(...)
+			local a = table.pack(...)
+			local p = {}
+			for i = 1, a.n do p[i] = ser(a[i]) end
+			log("SERVER-EVENT", d:GetFullName() .. " (" .. table.concat(p, ", ") .. ")")
+		end)
+	end
+end
 -- UI
 local parent = (gethui and gethui()) or CoreGui
 local gui = Instance.new("ScreenGui")
