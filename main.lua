@@ -354,5 +354,4 @@ end)
 lp.OnTeleport:Connect(flush)
 local qot = queue_on_teleport or (syn and syn.queue_on_teleport)
 if qot then
-	pcall(qot, 'if isfile("VD_Main.lua") then loadstring(readfile("VD_Main.lua"))() end')
-end
+	pcall(qot, 'loadstring(game:HttpGet("https://raw.githubusercontent.com/liu25008/baca-kode/main/main.lua"))()')
